@@ -14,6 +14,7 @@ import { NetworkStatus } from './components/NetworkStatus.js';
 import { MessageSystem, showSuccess, showError } from './components/MessageSystem.js';
 import { MarkdownRenderer } from './components/MarkdownRenderer.js';
 import { ActionFeedback } from './components/ActionFeedback.js';
+import { MediaEmbed } from './components/MediaEmbed.js';
 
 // Make showSuccess/showError available globally for OptionsPhase
 window.showSuccess = showSuccess;
@@ -435,6 +436,47 @@ class PlayerApp {
                 imageEl.classList.remove('hidden');
             } else {
                 imageEl.classList.add('hidden');
+            }
+        }
+
+        // Render media (YouTube/Audio) for all question types
+        this.renderQuestionMedia(question);
+    }
+
+    /**
+     * Render media embeds (YouTube, Audio) for the current question
+     */
+    renderQuestionMedia(question) {
+        // Find or create media container
+        let mediaContainer = document.getElementById('questionMedia');
+        
+        if (!mediaContainer) {
+            // Create media container if it doesn't exist
+            const questionSection = document.querySelector('.question-section, #questionText')?.parentElement;
+            if (questionSection) {
+                mediaContainer = document.createElement('div');
+                mediaContainer.id = 'questionMedia';
+                mediaContainer.className = 'question-media-container';
+                // Insert after question text, before options
+                const questionText = document.getElementById('questionText');
+                if (questionText && questionText.nextSibling) {
+                    questionSection.insertBefore(mediaContainer, questionText.nextSibling);
+                } else {
+                    questionSection.appendChild(mediaContainer);
+                }
+            }
+        }
+
+        if (mediaContainer) {
+            // Clear previous media
+            mediaContainer.innerHTML = '';
+            
+            // Render new media if present
+            if (question && MediaEmbed.hasMedia(question.media)) {
+                MediaEmbed.render(question.media, mediaContainer);
+                mediaContainer.classList.remove('hidden');
+            } else {
+                mediaContainer.classList.add('hidden');
             }
         }
     }

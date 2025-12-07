@@ -53,6 +53,15 @@
     margin-bottom: var(--spacing-lg, 1.5rem);
 }
 
+/* Question media container (for PlayerApp global media) */
+.question-media-container {
+    margin: var(--spacing-md, 1rem) 0;
+}
+
+.question-media-container.hidden {
+    display: none;
+}
+
 /* ==================== MULTI-SELECT ==================== */
 
 .multi-select-phase {

@@ -344,6 +344,85 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             color: var(--text-gray-300);
         }
         
+        /* Question Types Help */
+        .question-types-help {
+            margin-top: 0.5rem;
+        }
+        
+        .question-types-help details {
+            background-color: var(--bg-gray-700);
+            border-radius: 0.5rem;
+            overflow: hidden;
+        }
+        
+        .question-types-help summary {
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            color: var(--cyan-400);
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .question-types-help summary:hover {
+            background-color: var(--bg-gray-600);
+        }
+        
+        .question-types-help .help-content {
+            padding: 1rem;
+            background-color: var(--bg-gray-800);
+            border-top: 1px solid var(--bg-gray-600);
+        }
+        
+        .question-types-help h4 {
+            color: var(--text-white);
+            margin: 0.5rem 0;
+            font-size: 0.9rem;
+        }
+        
+        .question-types-help ul {
+            margin: 0.5rem 0;
+            padding-left: 1.5rem;
+        }
+        
+        .question-types-help li {
+            color: var(--text-gray-300);
+            margin: 0.5rem 0;
+            font-size: 0.85rem;
+        }
+        
+        .question-types-help code {
+            display: block;
+            background-color: var(--bg-gray-900);
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            color: var(--green-400);
+            margin-top: 0.25rem;
+            overflow-x: auto;
+        }
+        
+        /* Media Insert Controls */
+        .media-insert-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        
+        .media-input-group {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .media-input-group .form-input {
+            flex: 1;
+        }
+        
+        .media-input-group .btn {
+            white-space: nowrap;
+        }
+        
         /* Image Gallery */
         .image-gallery {
             display: grid;
@@ -540,6 +619,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="form-group">
                     <label class="form-label">Questions JSON</label>
                     <textarea id="templateQuestions" class="form-textarea" placeholder="Paste questions JSON here..." style="min-height: 250px; font-family: monospace;"></textarea>
+                    <div class="question-types-help">
+                        <details>
+                            <summary><i class="fas fa-info-circle"></i> Question Types Reference</summary>
+                            <div class="help-content">
+                                <h4>Supported Question Types:</h4>
+                                <ul>
+                                    <li><strong>single_choice</strong> - Traditional multiple choice (one correct answer)
+                                        <code>{"type": "single_choice", "options": [...], "correct": 0}</code>
+                                    </li>
+                                    <li><strong>multi_select</strong> - Multiple correct answers (checkboxes)
+                                        <code>{"type": "multi_select", "options": [...], "correctAnswers": [0, 2]}</code>
+                                    </li>
+                                    <li><strong>fill_blanks</strong> - Fill in the blanks with text inputs
+                                        <code>{"type": "fill_blanks", "blanksConfig": [{"id": 0, "answer": "...", "alternatives": [...]}]}</code>
+                                    </li>
+                                    <li><strong>open_ended</strong> - Free-text response (teacher graded)
+                                        <code>{"type": "open_ended", "openConfig": {"hints": [...], "requiresGrading": true}}</code>
+                                    </li>
+                                </ul>
+                                <h4>Media Support (all types):</h4>
+                                <ul>
+                                    <li><strong>image</strong> - Static image URL: <code>"image": "images/myimage.png"</code></li>
+                                    <li><strong>YouTube</strong> - Embedded video: <code>"media": {"youtube": "https://youtube.com/watch?v=..."}</code></li>
+                                    <li><strong>Audio</strong> - Audio player: <code>"media": {"audio": "https://example.com/audio.mp3"}</code></li>
+                                </ul>
+                            </div>
+                        </details>
+                    </div>
                 </div>
                 
                 <div class="form-group">
@@ -559,6 +666,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
                     <div class="image-gallery" id="imageGallery">
                         <!-- Images will be loaded here -->
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Add Media (YouTube / Audio)</label>
+                    <div class="media-insert-controls">
+                        <div class="media-input-group">
+                            <input type="text" id="youtubeUrlInput" class="form-input" placeholder="YouTube URL (e.g., https://youtube.com/watch?v=...)">
+                            <button id="insertYoutubeBtn" class="btn btn-sm btn-primary" title="Insert YouTube URL">
+                                <i class="fab fa-youtube"></i> Insert
+                            </button>
+                        </div>
+                        <div class="media-input-group">
+                            <input type="text" id="audioUrlInput" class="form-input" placeholder="Audio URL (e.g., https://example.com/audio.mp3)">
+                            <button id="insertAudioBtn" class="btn btn-sm btn-primary" title="Insert Audio URL">
+                                <i class="fas fa-music"></i> Insert
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -622,6 +747,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             // Refresh images
             document.getElementById('refreshImagesBtn').addEventListener('click', loadImages);
+            
+            // YouTube and Audio insert buttons
+            document.getElementById('insertYoutubeBtn').addEventListener('click', () => {
+                const url = document.getElementById('youtubeUrlInput').value.trim();
+                if (url) {
+                    insertMediaUrl('youtube', url);
+                    document.getElementById('youtubeUrlInput').value = '';
+                } else {
+                    showMessage('error', 'Please enter a YouTube URL');
+                }
+            });
+            
+            document.getElementById('insertAudioBtn').addEventListener('click', () => {
+                const url = document.getElementById('audioUrlInput').value.trim();
+                if (url) {
+                    insertMediaUrl('audio', url);
+                    document.getElementById('audioUrlInput').value = '';
+                } else {
+                    showMessage('error', 'Please enter an audio URL');
+                }
+            });
             
             // Track cursor position in questions textarea
             const questionsTextarea = document.getElementById('templateQuestions');
@@ -738,13 +884,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             document.getElementById('templateDescription').value = template?.description || '';
             document.getElementById('templateQuestions').value = template ? 
                 JSON.stringify(template.questions, null, 2) : 
-                JSON.stringify([{
-                    "question": "What is phishing?",
-                    "options": ["Deceptive emails to steal information", "Fishing for real fish"],
-                    "correct": 0,
-                    "image": "",
-                    "explanation": "Phishing is a cybersecurity attack using fake emails to steal personal information."
-                }], null, 2);
+                JSON.stringify([
+                    {
+                        "type": "single_choice",
+                        "question": "What is phishing?",
+                        "options": ["Deceptive emails to steal information", "A type of fishing", "A social media platform", "A programming language"],
+                        "correct": 0,
+                        "image": "",
+                        "explanation": "Phishing is a cybersecurity attack using fake emails to steal personal information.",
+                        "media": {
+                            "youtube": "",
+                            "audio": ""
+                        }
+                    },
+                    {
+                        "type": "multi_select",
+                        "question": "Which of the following are programming languages? (Select all that apply)",
+                        "options": ["Python", "HTML", "JavaScript", "CSS"],
+                        "correctAnswers": [0, 2],
+                        "explanation": "Python and JavaScript are programming languages. HTML and CSS are markup/styling languages.",
+                        "media": {}
+                    },
+                    {
+                        "type": "fill_blanks",
+                        "question": "The capital of ___ is Paris, and it is famous for the ___ Tower.",
+                        "blanksConfig": [
+                            {"id": 0, "answer": "France", "alternatives": ["france"], "caseSensitive": false},
+                            {"id": 1, "answer": "Eiffel", "alternatives": ["eiffel"], "caseSensitive": false}
+                        ],
+                        "explanation": "France's capital is Paris, home to the iconic Eiffel Tower.",
+                        "media": {}
+                    },
+                    {
+                        "type": "open_ended",
+                        "question": "Explain the concept of recursion in programming.",
+                        "openConfig": {
+                            "hints": ["Think about a function that calls itself", "Consider base case and recursive case"],
+                            "suggestedAnswers": ["A function that calls itself with a smaller input until reaching a base case"],
+                            "requiresGrading": true
+                        },
+                        "explanation": "Recursion is a technique where a function calls itself to solve smaller instances of a problem.",
+                        "media": {}
+                    }
+                ], null, 2);
             
             document.getElementById('templateEditor').classList.remove('hidden');
             loadImages();
@@ -1029,6 +1211,70 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Fallback: insert at cursor
             textarea.value = value.substring(0, pos) + `"image": "${url}"` + value.substring(pos);
             showMessage('info', 'Image URL inserted at cursor position');
+        }
+        
+        // Insert media URL (YouTube or Audio) into questions JSON
+        function insertMediaUrl(mediaType, url) {
+            const textarea = document.getElementById('templateQuestions');
+            const value = textarea.value;
+            const pos = currentCursorPosition ?? textarea.selectionStart;
+            
+            // Try to find nearest "media": {} field
+            const lines = value.split('\n');
+            let charCount = 0;
+            let insertLine = -1;
+            
+            for (let i = 0; i < lines.length; i++) {
+                if (charCount + lines[i].length >= pos) {
+                    insertLine = i;
+                    break;
+                }
+                charCount += lines[i].length + 1;
+            }
+            
+            if (insertLine !== -1) {
+                // Look for media field near cursor
+                for (let i = insertLine; i >= Math.max(0, insertLine - 15); i--) {
+                    if (lines[i].includes(`"${mediaType}":`)) {
+                        // Replace existing media type URL
+                        lines[i] = lines[i].replace(
+                            new RegExp(`"${mediaType}":\\s*"[^"]*"`), 
+                            `"${mediaType}": "${url}"`
+                        );
+                        textarea.value = lines.join('\n');
+                        showMessage('success', `${mediaType === 'youtube' ? 'YouTube' : 'Audio'} URL updated!`);
+                        return;
+                    }
+                    if (lines[i].includes('"media":')) {
+                        // Found media object, add the URL
+                        const mediaMatch = lines[i].match(/"media":\s*\{([^}]*)\}/);
+                        if (mediaMatch) {
+                            const existingContent = mediaMatch[1].trim();
+                            let newContent;
+                            if (existingContent) {
+                                // Add to existing media object
+                                newContent = existingContent.replace(/,?\s*$/, '') + `, "${mediaType}": "${url}"`;
+                            } else {
+                                newContent = `"${mediaType}": "${url}"`;
+                            }
+                            lines[i] = lines[i].replace(/"media":\s*\{[^}]*\}/, `"media": {${newContent}}`);
+                        } else {
+                            // media: {} on multiple lines - try simpler approach
+                            lines[i] = lines[i].replace(/"media":\s*\{\s*\}/, `"media": {"${mediaType}": "${url}"}`);
+                        }
+                        textarea.value = lines.join('\n');
+                        showMessage('success', `${mediaType === 'youtube' ? 'YouTube' : 'Audio'} URL inserted!`);
+                        return;
+                    }
+                    if (lines[i].trim() === '{' || lines[i].includes('"question":')) {
+                        break;
+                    }
+                }
+            }
+            
+            // Fallback: insert at cursor
+            textarea.value = value.substring(0, pos) + `"media": {"${mediaType}": "${url}"}` + value.substring(pos);
+            showMessage('info', `${mediaType === 'youtube' ? 'YouTube' : 'Audio'} URL inserted at cursor position`);
         }
         
         // Show message notification

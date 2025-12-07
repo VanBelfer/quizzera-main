@@ -567,7 +567,88 @@ fi
 curl -s -X POST "$API_URL" -H "Content-Type: application/json" -d '{"action":"resetGame"}' > /dev/null
 
 # ============================================================
-section "12. Database Check"
+section "12. Assignment Mode API Tests"
+# ============================================================
+info "Testing assignment mode API..."
+
+# Create assignment without password
+ASSIGN_RESULT=$(curl -s -X POST "$API_URL" \
+    -H "Content-Type: application/json" \
+    -d '{"action":"createAssignment","title":"Test Assignment","deliveryMode":"self_paced"}')
+
+if echo "$ASSIGN_RESULT" | grep -q '"success":true'; then
+    pass "API: Create assignment without password"
+else
+    fail "API: Create assignment without password"
+    echo "Response: $ASSIGN_RESULT"
+fi
+
+# Extract assignment code
+if command -v jq &> /dev/null; then
+    ASSIGN_CODE=$(echo "$ASSIGN_RESULT" | jq -r '.code')
+    ASSIGN_ID=$(echo "$ASSIGN_RESULT" | jq -r '.assignmentId')
+else
+    ASSIGN_CODE=$(echo "$ASSIGN_RESULT" | grep -o '"code":"[^"]*"' | cut -d'"' -f4)
+    ASSIGN_ID=$(echo "$ASSIGN_RESULT" | grep -o '"assignmentId":"[^"]*"' | cut -d'"' -f4)
+fi
+
+# Create assignment with password and expiration
+ASSIGN_RESULT2=$(curl -s -X POST "$API_URL" \
+    -H "Content-Type: application/json" \
+    -d '{"action":"createAssignment","title":"Protected Quiz","deliveryMode":"self_paced","password":"secret123","expiresAt":"2099-12-31T23:59:59Z"}')
+
+if echo "$ASSIGN_RESULT2" | grep -q '"hasPassword":true'; then
+    pass "API: Create assignment with password"
+else
+    fail "API: Create assignment with password"
+fi
+
+# Get assignment by code
+GET_RESULT=$(curl -s -X POST "$API_URL" \
+    -H "Content-Type: application/json" \
+    -d "{\"action\":\"getAssignmentByCode\",\"code\":\"$ASSIGN_CODE\"}")
+
+if echo "$GET_RESULT" | grep -q '"success":true'; then
+    pass "API: Get assignment by code"
+else
+    fail "API: Get assignment by code"
+fi
+
+# Get assignments list
+LIST_RESULT=$(curl -s -X POST "$API_URL" \
+    -H "Content-Type: application/json" \
+    -d '{"action":"getAssignments"}')
+
+if echo "$LIST_RESULT" | grep -q '"assignments":\['; then
+    pass "API: Get assignments list"
+else
+    fail "API: Get assignments list"
+fi
+
+# Join assignment (no password required)
+JOIN_RESULT=$(curl -s -X POST "$API_URL" \
+    -H "Content-Type: application/json" \
+    -d "{\"action\":\"joinAssignment\",\"code\":\"$ASSIGN_CODE\",\"nickname\":\"TestStudent\"}")
+
+if echo "$JOIN_RESULT" | grep -q '"success":true'; then
+    pass "API: Join assignment without password"
+else
+    fail "API: Join assignment without password"
+fi
+
+# Delete assignment
+DELETE_RESULT=$(curl -s -X POST "$API_URL" \
+    -H "Content-Type: application/json" \
+    -d "{\"action\":\"deleteAssignment\",\"assignmentId\":\"$ASSIGN_ID\"}")
+
+if echo "$DELETE_RESULT" | grep -q '"success":true'; then
+    pass "API: Delete assignment"
+else
+    fail "API: Delete assignment"
+fi
+
+# ============================================================
+section "13. Database Check"
 # ============================================================
 
 if [ -f "data/quiz.db" ]; then

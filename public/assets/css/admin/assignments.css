@@ -1,0 +1,403 @@
+/* Assignment Management Styles */
+
+/* Assignments Tab Container */
+#assignmentsTab {
+    padding: 1rem 0;
+}
+
+.assignments-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-gray-700);
+}
+
+.assignments-header h3 {
+    font-size: 1.25rem;
+    color: var(--text-white);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.assignments-header h3 i {
+    color: var(--cyan-400);
+}
+
+.header-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* Assignments Info */
+.assignments-info {
+    background: var(--bg-gray-800);
+    padding: 1rem;
+    border-radius: 0.5rem;
+    margin-bottom: 1.5rem;
+    border-left: 3px solid var(--cyan-500);
+}
+
+.assignments-info p {
+    margin: 0;
+    color: var(--text-gray-300);
+    font-size: 0.875rem;
+}
+
+.assignments-info i {
+    color: var(--cyan-400);
+    margin-right: 0.5rem;
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: var(--text-gray-400);
+}
+
+.empty-state i {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+.empty-state p {
+    margin: 0.5rem 0;
+}
+
+.empty-state .hint {
+    font-size: 0.875rem;
+    color: var(--text-gray-500);
+}
+
+/* Assignments Table */
+.assignments-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--bg-gray-800);
+    border-radius: 0.5rem;
+    overflow: hidden;
+}
+
+.assignments-table th,
+.assignments-table td {
+    padding: 0.75rem 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-gray-700);
+}
+
+.assignments-table th {
+    background: var(--bg-gray-900);
+    color: var(--text-gray-300);
+    font-weight: 600;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.assignments-table td {
+    color: var(--text-gray-200);
+}
+
+.assignments-table tr:hover {
+    background: var(--bg-gray-700);
+}
+
+.assignments-table tr.expired {
+    opacity: 0.6;
+}
+
+/* Assignment Code */
+.assignment-code {
+    background: var(--bg-gray-900);
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-family: monospace;
+    font-size: 0.9rem;
+    color: var(--cyan-400);
+    letter-spacing: 0.1em;
+}
+
+/* Assignment Status */
+.assignment-status {
+    display: inline-block;
+    padding: 0.125rem 0.5rem;
+    border-radius: 1rem;
+    font-size: 0.75rem;
+    margin-left: 0.5rem;
+    font-weight: 600;
+}
+
+.status-active {
+    background: var(--green-500);
+    color: white;
+}
+
+.status-expired {
+    background: var(--red-500);
+    color: white;
+}
+
+/* Submissions Count */
+.submissions-count {
+    font-weight: 600;
+    color: var(--cyan-400);
+}
+
+/* Actions Cell */
+.actions-cell {
+    white-space: nowrap;
+}
+
+.actions-cell .btn {
+    margin-right: 0.25rem;
+}
+
+.actions-cell .btn:last-child {
+    margin-right: 0;
+}
+
+/* Badges */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.badge-info {
+    background: var(--cyan-600);
+    color: white;
+}
+
+.badge-secondary {
+    background: var(--bg-gray-600);
+    color: var(--text-gray-300);
+}
+
+/* Text Muted */
+.text-muted {
+    color: var(--text-gray-500);
+    font-style: italic;
+}
+
+/* Assignment Detail Modal */
+.assignment-detail {
+    text-align: center;
+    padding: 1rem;
+}
+
+.assignment-detail .success-icon {
+    font-size: 4rem;
+    color: var(--green-500);
+    margin-bottom: 1rem;
+}
+
+.assignment-detail h3 {
+    color: var(--text-white);
+    margin-bottom: 1.5rem;
+}
+
+.detail-section {
+    text-align: left;
+    margin-bottom: 1rem;
+    padding: 1rem;
+    background: var(--bg-gray-800);
+    border-radius: 0.5rem;
+}
+
+.detail-section label {
+    display: block;
+    font-size: 0.875rem;
+    color: var(--text-gray-400);
+    margin-bottom: 0.25rem;
+}
+
+.detail-section p {
+    margin: 0;
+    color: var(--text-gray-200);
+}
+
+.code-display {
+    font-family: monospace;
+    font-size: 2rem;
+    color: var(--cyan-400);
+    letter-spacing: 0.2em;
+    text-align: center;
+}
+
+/* URL Box */
+.url-box {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.url-box input {
+    flex: 1;
+    padding: 0.75rem;
+    background: var(--bg-gray-900);
+    border: 1px solid var(--border-gray-600);
+    border-radius: 0.375rem;
+    color: var(--text-gray-200);
+    font-size: 0.875rem;
+}
+
+.url-box input:focus {
+    outline: none;
+    border-color: var(--cyan-500);
+}
+
+/* Results Empty */
+.results-empty {
+    text-align: center;
+    padding: 2rem;
+}
+
+.results-empty i {
+    font-size: 3rem;
+    color: var(--text-gray-500);
+    margin-bottom: 1rem;
+}
+
+.results-empty h3 {
+    color: var(--text-gray-300);
+    margin-bottom: 0.5rem;
+}
+
+.results-empty p {
+    color: var(--text-gray-500);
+}
+
+/* Results Summary */
+.results-summary {
+    padding: 1rem;
+}
+
+.results-summary h3 {
+    color: var(--text-white);
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.results-summary h3 i {
+    color: var(--cyan-400);
+}
+
+.stats-row {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.stat-box {
+    flex: 1;
+    background: var(--bg-gray-800);
+    padding: 1rem;
+    border-radius: 0.5rem;
+    text-align: center;
+}
+
+.stat-value {
+    display: block;
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--cyan-400);
+}
+
+.stat-label {
+    display: block;
+    font-size: 0.875rem;
+    color: var(--text-gray-400);
+    margin-top: 0.25rem;
+}
+
+/* Results Table */
+.results-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.results-table th,
+.results-table td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-gray-700);
+}
+
+.results-table th {
+    background: var(--bg-gray-800);
+    color: var(--text-gray-300);
+    font-weight: 600;
+}
+
+.results-table td {
+    color: var(--text-gray-200);
+}
+
+/* Score Badge */
+.score-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.score-good {
+    background: var(--green-500);
+    color: white;
+}
+
+.score-ok {
+    background: var(--yellow-500);
+    color: var(--bg-gray-900);
+}
+
+.score-low {
+    background: var(--red-500);
+    color: white;
+}
+
+/* Assignment Form */
+#assignmentModal .form-group {
+    margin-bottom: 1rem;
+}
+
+#assignmentModal .form-hint {
+    font-size: 0.75rem;
+    color: var(--text-gray-500);
+    margin-top: 0.25rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .assignments-table {
+        font-size: 0.875rem;
+    }
+    
+    .assignments-table th,
+    .assignments-table td {
+        padding: 0.5rem;
+    }
+    
+    .actions-cell .btn {
+        padding: 0.25rem 0.5rem;
+    }
+    
+    .stats-row {
+        flex-direction: column;
+    }
+    
+    .url-box {
+        flex-direction: column;
+    }
+}

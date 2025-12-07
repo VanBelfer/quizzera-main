@@ -1,8 +1,6 @@
 # Quizerka - Claude Context Document
 
-> **TL;DR for Claude**: Interactive quiz platform with PHP/SQLite backend and vanilla JS ES6 modules frontend. See Quick Reference below for essential context.
-
-I host it on my vps.
+> **TL;DR for Claude**: Interactive quiz platform with PHP/SQLite backend and vanilla JS ES6 modules frontend. Four question types, assignment mode, real-time buzzer system.
 
 ---
 
@@ -11,335 +9,413 @@ I host it on my vps.
 ### Essential Files
 | File | Purpose |
 |------|---------|
-| `public/api.php` | ALL backend API endpoints |
-| `src/QuizManager.php` | Core game logic |
-| `public/assets/js/PlayerApp.js` | Player main entry |
-| `public/assets/js/AdminApp.js` | Admin main entry |
-| `public/assets/js/core/api.js` | ApiClient class |
-| `public/assets/js/core/state.js` | StateManager with polling |
+| `public/api.php` | ALL backend API endpoints (switch/case on `action`) |
+| `src/QuizManager.php` | Core game logic - ALL backend methods |
+| `src/Database.php` | SQLite connection with WAL mode |
+| `public/assets/js/PlayerApp.js` | Player main entry point |
+| `public/assets/js/AdminApp.js` | Admin main entry point |
+| `public/assets/js/core/api.js` | `ApiClient` class - frontend API calls |
+| `public/assets/js/core/state.js` | `StateManager` class - polling & state |
+| `public/assignment-modular.php` | Student interface for self-paced assignments |
+
+### ⚠️ CRITICAL NAMING CONVENTIONS (AI often gets these wrong!)
+
+```javascript
+// CORRECT API action names (case-sensitive strings in api.php):
+'pressBuzzer'      // NOT 'buzz', 'buzzer', 'submitBuzz'
+'submitAnswer'     // For single_choice - sends { answer: index }
+'submitMultiAnswer' // For multi_select - sends { answers: [indices] }
+'submitBlanksAnswer' // For fill_blanks - sends { answers: ['text1', 'text2'] }
+'submitOpenAnswer'  // For open_ended - sends { answer: 'text' }
+'revealCorrect'    // NOT 'reveal', 'showCorrect', 'showAnswer'
+'showOptions'      // NOT 'revealOptions', 'showAnswers'
+'softReset'        // Resets current question only (keeps players)
+'resetGame'        // Full reset (clears players too)
+'getGameState'     // Player polling endpoint
+'getGameData'      // Admin polling endpoint (includes answerStats)
+'markSpoken'       // NOT 'markAsSpoken', 'setSpoken'
+
+// Question type identifiers (in question.type field):
+'single_choice'    // NOT 'single', 'choice', 'multiple_choice'
+'multi_select'     // NOT 'multi', 'multiple', 'multiselect'  
+'fill_blanks'      // NOT 'fill_blank', 'fillBlanks', 'blanks'
+'open_ended'       // NOT 'open', 'openEnded', 'text'
+
+// Question fields per type:
+// single_choice: { question, options[], correct: index, image?, youtube?, audio? }
+// multi_select:  { question, options[], correctAnswers: [indices], ... }
+// fill_blanks:   { question, blanksConfig: [{correct, alternatives?}], ... }
+// open_ended:    { question, openConfig: {suggestedAnswer?, hint?, requiresGrading?}, ... }
+
+// CORRECT: correctAnswers (plural, camelCase) for multi_select
+// WRONG: correctAnswer, correct_answers, correctIndexes
+
+// CORRECT: blanksConfig (camelCase, Config suffix)
+// WRONG: blanks_config, blanksData, fillConfig
+
+// CORRECT: openConfig 
+// WRONG: open_config, openEndedConfig
+```
 
 ### Game State Structure
 ```javascript
-gameState: {
-  gameStarted: boolean,
-  currentQuestion: number,
-  phase: 'waiting' | 'question_shown' | 'options_shown' | 'reveal' | 'finished',
-  answers: [{playerId, question, answer, isCorrect, timestamp}]  // ARRAY!
+// From getGameState (player) or getGameData (admin)
+{
+  success: true,
+  stateVersion: 123,        // Integer - increments on ANY change
+  gameState: {
+    gameStarted: boolean,
+    currentQuestion: number, // 0-indexed
+    phase: 'waiting' | 'question_shown' | 'options_shown' | 'reveal' | 'finished',
+    buzzers: [{playerId, nickname, timestamp}],  // Current question's buzzers
+    spokenPlayers: ['playerId1', 'playerId2'],   // Who already answered verbally
+    answers: [{playerId, question, answer, isCorrect, timestamp, score}]
+  },
+  questions: [...],         // Array of question objects
+  players: [{id, nickname, score, joinedAt}],
+  // Admin only (getGameData):
+  answerStats: { total, correct, byOption: {0: count, 1: count, ...} },
+  allAnswers: [...]
 }
 ```
 
-### Key Patterns
-- **Polling**: StateManager polls every 500ms (player) / 1000ms (admin)
-- **Change detection**: `stateVersion` integer increments on state change
-- **Phase order check**: `finished` → `!gameStarted` → active phases
-- **Notes API**: Returns `{content, updatedAt}` object
+### Phase Flow
+```
+waiting → [startGame] → question_shown → [showOptions] → options_shown → [revealCorrect] → reveal → [nextQuestion] → question_shown... → finished
+```
+**Phase check order in code**: `finished` → `!gameStarted` → specific phases
 
-### Common API Actions
-```bash
-# Player
-joinGame, getGameState, pressBuzzer, submitAnswer, getPlayerSummary, getNotes
+### API Actions Reference
 
-# Admin  
-startGame, showOptions, revealCorrect, nextQuestion, getGameData, saveNotes
+#### Player Actions
+| Action | Parameters | Returns |
+|--------|------------|---------|
+| `joinGame` | `{nickname}` | `{success, playerId, nickname}` |
+| `getGameState` | `{}` | Full state object |
+| `pressBuzzer` | `{playerId}` | `{success, position, message}` |
+| `submitAnswer` | `{playerId, answer: index}` | `{success, isCorrect, correctAnswer}` |
+| `submitMultiAnswer` | `{playerId, answers: [indices]}` | `{success, score, correctSelected, totalCorrect}` |
+| `submitBlanksAnswer` | `{playerId, answers: ['a','b']}` | `{success, score, results: [{correct, userAnswer}]}` |
+| `submitOpenAnswer` | `{playerId, answer: 'text'}` | `{success, requiresGrading, autoScore}` |
+| `getPlayerSummary` | `{playerId}` | `{totalQuestions, correctAnswers, score, answers}` |
+| `getNotes` | `{}` | `{content, updatedAt}` |
+
+#### Admin Actions
+| Action | Parameters | Returns |
+|--------|------------|---------|
+| `startGame` | `{}` | `{success, stateVersion}` |
+| `showOptions` | `{}` | `{success, stateVersion}` |
+| `revealCorrect` | `{}` | `{success, stateVersion}` |
+| `nextQuestion` | `{}` | `{success, stateVersion, currentQuestion}` |
+| `markSpoken` | `{playerId}` | `{success}` |
+| `softReset` | `{}` | `{success}` - resets current Q, keeps players |
+| `resetGame` | `{}` | `{success}` - full reset |
+| `updateQuestions` | `{questionsJson: 'string'}` | `{success, questionCount}` |
+| `getGameData` | `{}` | Full state + answerStats |
+| `saveNotes` | `{content}` | `{success, updatedAt}` |
+| `gradeAnswer` | `{playerId, questionIndex, grade, feedback?}` | `{success}` |
+
+#### Assignment Actions
+| Action | Parameters | Returns |
+|--------|------------|---------|
+| `createAssignment` | `{title, password?, expiresAt?}` | `{success, assignmentId, code}` |
+| `getAssignmentByCode` | `{code}` | `{success, assignment, questions}` |
+| `joinAssignment` | `{code, nickname, password?}` | `{success, sessionId, nickname}` |
+| `getAssignments` | `{}` | `{success, assignments: [...]}` |
+| `getAssignmentResults` | `{assignmentId}` | `{success, submissions: [...]}` |
+| `deleteAssignment` | `{assignmentId}` | `{success}` |
+
+#### Session Actions
+| Action | Parameters | Returns |
+|--------|------------|---------|
+| `saveSession` | `{name}` | `{success, sessionId}` |
+| `getSessions` | `{}` | `{success, sessions: [...]}` |
+| `loadSession` | `{sessionId}` | `{success}` |
+| `deleteSession` | `{sessionId}` | `{success}` |
+
+---
+
+## Question Types & JSON Format
+
+### 1. Single Choice (default)
+```json
+{
+  "type": "single_choice",
+  "question": "What is 2+2?",
+  "options": ["3", "4", "5", "6"],
+  "correct": 1,
+  "image": "optional-url",
+  "youtube": "https://youtube.com/watch?v=xxx",
+  "audio": "https://example.com/audio.mp3",
+  "explanation": "Admin notes (not shown to students)"
+}
+```
+**Note**: `correct` is 0-indexed. Options get shuffled, correct index is remapped.
+
+### 2. Multi-Select
+```json
+{
+  "type": "multi_select",
+  "question": "Select all prime numbers:",
+  "options": ["2", "4", "7", "9", "11"],
+  "correctAnswers": [0, 2, 4],
+  "youtube": "optional"
+}
+```
+**Scoring**: Partial credit = correctSelected / totalCorrect (0 to 1)
+
+### 3. Fill in the Blanks
+```json
+{
+  "type": "fill_blanks",
+  "question": "The capital of France is ___. The capital of Germany is ___.",
+  "blanksConfig": [
+    {"correct": "Paris", "alternatives": ["paris"]},
+    {"correct": "Berlin", "alternatives": ["berlin"]}
+  ]
+}
+```
+**Matching**: Case-insensitive, trims whitespace, checks alternatives
+
+### 4. Open-Ended
+```json
+{
+  "type": "open_ended", 
+  "question": "Explain photosynthesis in your own words.",
+  "openConfig": {
+    "suggestedAnswer": "Plants convert sunlight...",
+    "hint": "Think about sunlight and CO2",
+    "requiresGrading": true
+  }
+}
+```
+**Note**: If `requiresGrading: true`, teacher must manually grade via `gradeAnswer` action.
+
+---
+
+## Frontend Architecture
+
+### ES Modules Structure (No Bundler)
+```
+public/assets/js/
+├── PlayerApp.js          # Player entry - imports all player modules
+├── AdminApp.js           # Admin entry - imports all admin modules
+├── core/
+│   ├── api.js            # ApiClient class
+│   ├── state.js          # StateManager with polling
+│   └── utils.js          # escapeHtml, formatTime, onReady, debounce
+├── components/           # Shared UI
+│   ├── HelpPanel.js
+│   ├── NetworkStatus.js
+│   ├── MessageSystem.js  # Toast notifications
+│   ├── MarkdownRenderer.js
+│   ├── Modal.js
+│   ├── ActionFeedback.js
+│   └── MediaEmbed.js     # YouTube & audio player
+├── admin/
+│   ├── GameControl.js    # Play/pause/next buttons
+│   ├── QuestionEditor.js
+│   ├── SessionManager.js
+│   ├── NotesEditor.js
+│   ├── TabsNavigation.js
+│   └── AssignmentManager.js  # Create/manage assignments
+└── player/
+    ├── BuzzerPhase.js
+    ├── OptionsPhase.js   # Single choice UI
+    ├── MultiSelectPhase.js
+    ├── FillBlanksPhase.js
+    ├── OpenEndedPhase.js
+    ├── EndScreen.js
+    ├── AudioManager.js   # Buzzer sounds
+    ├── KeyboardShortcuts.js
+    └── ScreenManager.js
 ```
 
-### CSS Variables (variables.css)
+### Key Classes
+
+**ApiClient** (`core/api.js`)
+```javascript
+const api = new ApiClient('api.php');
+await api.post('actionName', {data});  // Generic
+await api.pressBuzzer(playerId);       // Convenience methods
+await api.request('anyAction', data);  // Alternative (if exists)
+```
+
+**StateManager** (`core/state.js`)
+```javascript
+const state = new StateManager(api, {
+  pollingInterval: 500,    // Player: 500ms, Admin: 1000ms
+  fetchMethod: 'getGameState',  // or 'getGameData' for admin
+  autoStart: true
+});
+state.subscribe(callback);  // Called on state change
+state.refresh();            // Force immediate fetch
+```
+
+### CSS Architecture
+```
+public/assets/css/
+├── variables.css    # --cyan-400, --bg-gray-800, etc.
+├── base.css, buttons.css, forms.css, animations.css
+├── components/      # help-panel, modal, notifications, badges, cards
+├── admin/           # dashboard, tabs, game-controls, assignments, etc.
+└── player/          # login, buzzer, options, question-types, end-screen
+```
+
+**Key CSS Variables**:
 ```css
---cyan-400/500/600  /* Primary */    --green-500, --red-500  /* Success/Error */
---bg-gray-700/800/900  /* Backgrounds */    --text-white, --text-gray-300  /* Text */
+--cyan-400, --cyan-500, --cyan-600  /* Primary brand */
+--green-500, --red-500              /* Success/Error */
+--bg-gray-700, --bg-gray-800, --bg-gray-900  /* Backgrounds */
+--text-white, --text-gray-300, --text-gray-400  /* Text */
+--border-gray-600, --border-gray-700  /* Borders */
 ```
 
-### Testing
+---
+
+## Backend Architecture
+
+### Database Schema (SQLite)
+```sql
+-- Core tables
+players (id, session_id, nickname, score, joined_at, is_active)
+questions (id, session_id, position, question, type, options, correct, 
+           correct_answers, blanks_config, open_config, image, youtube, audio, explanation)
+game_state (session_id, key, value)  -- Key-value store for state
+buzzers (id, session_id, player_id, question_index, timestamp)
+answers (id, session_id, player_id, question_index, answer, answer_text, 
+         is_correct, score, timestamp, graded_at, feedback)
+spoken_players (id, session_id, player_id, question_index)
+
+-- Sessions & Assignments
+saved_sessions (id, name, data, created_at)
+assignments (id, session_id, code, title, delivery_mode, password_hash, 
+             created_at, expires_at)
+assignment_submissions (id, assignment_id, nickname, score, answers, 
+                        started_at, completed_at)
+```
+
+### QuizManager Key Methods
+```php
+// Player methods
+joinGame(string $nickname): array
+recordBuzzer(string $playerId, int $questionIndex): array
+submitAnswer(string $playerId, int $questionIndex, int $answerIndex): array
+submitMultiAnswer(string $playerId, int $questionIndex, array $selectedIndices): array
+submitBlanksAnswer(string $playerId, int $questionIndex, array $answers): array
+submitOpenAnswer(string $playerId, int $questionIndex, string $answerText): array
+getPlayerSummary(string $playerId): array
+
+// Admin methods
+startGame(): array
+nextQuestion(int $expectedVersion = 0): array
+showOptions(): array
+revealCorrect(): array
+markSpoken(string $playerId, int $questionIndex): bool
+softReset(): array
+resetGame(): array
+updateQuestions(array $newQuestions): array
+gradeOpenAnswer(string $playerId, int $questionIndex, int $grade, string $feedback): array
+
+// Assignment methods  
+createAssignment(string $title, string $deliveryMode, ?string $password, ?string $expiresAt): array
+getAssignmentByCode(string $code): ?array
+joinAssignment(string $code, string $nickname, ?string $password): array
+getAssignments(): array
+deleteAssignment(string $assignmentId): bool
+```
+
+---
+
+## Testing
+
+### Run Full Test Suite
 ```bash
-curl -s -X POST -H "Content-Type: application/json" \
-  -d '{"action":"getGameState"}' http://localhost:8080/api.php
+./test-modular.sh http://localhost:8080
+# 98 tests covering: CSS, JS, API flow, question types, assignments, database
+```
+
+### Quick API Tests
+```bash
+# Get state
+curl -s -X POST http://localhost:8080/api.php \
+  -H "Content-Type: application/json" \
+  -d '{"action":"getGameState"}' | jq .
+
+# Join game
+curl -s -X POST http://localhost:8080/api.php \
+  -H "Content-Type: application/json" \
+  -d '{"action":"joinGame","nickname":"TestPlayer"}' | jq .
+
+# Create assignment
+curl -s -X POST http://localhost:8080/api.php \
+  -H "Content-Type: application/json" \
+  -d '{"action":"createAssignment","title":"Quiz 1","password":"secret"}' | jq .
+```
+
+### Start Dev Server
+```bash
+php -S localhost:8080 -t public/
 ```
 
 ---
 
-## ✅ MIGRATION COMPLETED - SQLite Backend + Modular Frontend
+## URLs & Entry Points
 
-The application has been migrated from JSON file storage to SQLite database with modular PHP architecture and now features a fully modularized frontend with ES Modules.
-
-### New Structure
-```
-/workspaces/quizzera/
-├── data/
-│   └── quiz.db            # SQLite database (replaces .json files)
-├── public/                # Web-accessible files
-│   ├── index.php          # Student Interface (legacy - inline CSS/JS)
-│   ├── admin.php          # Admin Interface (legacy - inline CSS/JS)
-│   ├── index-modular.php  # Student Interface (modular - ES Modules)
-│   ├── admin-modular.php  # Admin Interface (modular - ES Modules)
-│   ├── api.php            # Central API controller
-│   └── assets/            
-│       ├── css/           # Modular CSS
-│       │   ├── variables.css       # CSS custom properties
-│       │   ├── base.css            # Reset, typography
-│       │   ├── buttons.css         # Button components
-│       │   ├── forms.css           # Form inputs
-│       │   ├── animations.css      # Keyframe animations
-│       │   ├── components/         # Shared UI components
-│       │   │   ├── help-panel.css
-│       │   │   ├── notifications.css
-│       │   │   ├── modal.css
-│       │   │   ├── progress.css
-│       │   │   ├── badges.css
-│       │   │   └── cards.css
-│       │   ├── admin/              # Admin-specific styles
-│       │   │   ├── dashboard.css
-│       │   │   ├── tabs.css
-│       │   │   ├── game-controls.css
-│       │   │   ├── question-editor.css
-│       │   │   ├── notes-editor.css
-│       │   │   └── results.css
-│       │   └── player/             # Player-specific styles
-│       │       ├── login.css
-│       │       ├── buzzer.css
-│       │       ├── options.css
-│       │       ├── end-screen.css
-│       │       └── notes-panel.css
-│       └── js/            # Modular JavaScript (ES Modules)
-│           ├── AdminApp.js         # Admin entry point
-│           ├── PlayerApp.js        # Player entry point
-│           ├── core/               # Core utilities
-│           │   ├── api.js          # API client with retry logic
-│           │   ├── state.js        # State management & polling
-│           │   └── utils.js        # DOM helpers, formatTime, etc.
-│           ├── components/         # Shared JS components
-│           │   ├── HelpPanel.js
-│           │   ├── NetworkStatus.js
-│           │   ├── MessageSystem.js
-│           │   ├── MarkdownRenderer.js
-│           │   ├── Modal.js
-│           │   └── ActionFeedback.js
-│           ├── admin/              # Admin-specific modules
-│           │   ├── GameControl.js
-│           │   ├── QuestionEditor.js
-│           │   ├── SessionManager.js
-│           │   ├── NotesEditor.js
-│           │   └── TabsNavigation.js
-│           └── player/             # Player-specific modules
-│               ├── BuzzerPhase.js
-│               ├── OptionsPhase.js
-│               ├── EndScreen.js
-│               ├── AudioManager.js
-│               ├── KeyboardShortcuts.js
-│               └── ScreenManager.js
-├── src/                   # Backend logic
-│   ├── Database.php       # SQLite connection with WAL mode
-│   └── QuizManager.php    # Game logic (buzzers, scoring, states)
-├── migrate.php            # JSON to SQLite migration script
-├── admin.php              # (OLD - legacy)
-└── quiz.php               # (OLD - legacy)
-```
-
-### Frontend Architecture
-
-**ES Modules (No Bundler)**
-- Native browser ES module imports
-- Each component is a self-contained class
-- Clean separation of concerns
-
-**CSS Architecture**
-- CSS Custom Properties for theming (`variables.css`)
-- Component-based CSS files
-- Admin and Player specific styles separated
-
-**Key Components**
-- `ApiClient` - Handles all server communication with retry logic
-- `StateManager` - Centralized state with polling and observers
-- `MessageSystem` - Toast notifications
-- `ActionFeedback` - Visual confirmations
-
-### How to Deploy
-1. Point your web server to `/public` directory
-2. Ensure PHP has write access to `/data` directory
-3. **Modular version** (recommended):
-   - Student: `http://yoursite/index-modular.php`
-   - Admin: `http://yoursite/admin-modular.php`
-4. **Legacy version** (inline CSS/JS):
-   - Student: `http://yoursite/index.php`
-   - Admin: `http://yoursite/admin.php`
-
-### Features
-- **No more spin-lock crashes** - SQLite handles concurrency natively with WAL mode
-- **Multi-session support** - Run multiple quizzes simultaneously
-- **Automatic backups** - Database backed up when saving sessions
-- **Zero race conditions** - Atomic operations for buzzers and answers
+| URL | Purpose |
+|-----|---------|
+| `/index-modular.php` | Student interface (live quiz) |
+| `/admin-modular.php` | Teacher dashboard |
+| `/assignment-modular.php?code=XXXX` | Self-paced assignment |
+| `/template_manager.php` | Question template builder |
+| `/api.php` | All API endpoints |
 
 ---
 
-## Original Issues (RESOLVED)
+## Common Pitfalls for AI
 
-The Critical Flaws in the Current Code
-1. The "Spin-Lock" Problem (The biggest risk)
-Your code uses manual file locking (while (file_exists($lockFile))... usleep).
+1. **Don't use** `correct_answers` (snake_case) - use `correctAnswers` in JSON
+2. **Don't use** `buzz` action - it's `pressBuzzer`
+3. **Don't use** `answer` parameter for multi-select - use `answers` (array)
+4. **Don't assume** questions have `options` - open_ended and fill_blanks don't
+5. **Don't forget** phase checks - UI depends heavily on `gameState.phase`
+6. **Don't skip** `stateVersion` - it's how polling detects changes
+7. **Don't mix** `getGameState` (player) with `getGameData` (admin)
+8. **Options get shuffled** - `correct` index is remapped after shuffle
+9. **Assignment codes** are 6 chars uppercase alphanumeric (e.g., "4BGMLL")
+10. **Notes API** returns `{content, updatedAt}` not just string
 
-The Scenario: Student A buzzes. The server creates quiz_state.json.lock.
+---
 
-The Crash: If the PHP script crashes, times out, or gets killed while writing (which happens often on cheaper VPSs under load), the .lock file is never deleted.
-
-The Result: The game freezes permanently. Every other student who tries to buzz enters an infinite loop waiting for that lock to disappear, spiking your CPU to 100% until the server crashes.
-
-2. Disk I/O Bottleneck
-Every time a student’s browser polls for an update (every 1.5 seconds), your server opens, reads, and closes a file from the hard disk.
-
-Math: 30 students = ~20 reads per second.
-
-Result: On a standard VPS, this latency adds up. Students will experience "lag" where they press the buzzer, but nothing happens for 2-3 seconds, ruining the competitive aspect of a quiz.
-
-3. Race Conditions (Missed Buzzers)
-Even with your locking logic, file systems are slower than RAM. Two students buzzing at the exact same millisecond often leads to one overwriting the other, or one request failing because the lock wait time exceeded 5 seconds.
-
-Better Alternatives (Ranked by Difficulty)
-Since you are hosting on a VPS, you have full control. You should move away from text files (.json) for data storage immediately.
-
-Quick Fix (SQLite)
-Why: SQLite is a file-based database, but it handles all the locking and concurrency logic internally and reliably. You don't need to install a separate server; it's built into PHP.
-
-Effort: Low. You just change your safeJsonRead/Write functions to standard SQL queries.
-
-Reliability: High for up to ~50-100 concurrent users.
-
-Breaking the code into modules (Separation of Concerns) while simultaneously switching to SQLite is the best way to ensure your project remains maintainable as you add more ESL features.
-
-Since you are on a VPS, we can set up a professional, lightweight directory structure. This separates your Data (SQLite), your Logic (PHP Classes), and your Presentation (HTML/JS).
-
-Shutterstock
-
-Here is the blueprint for modularizing your Quiz App to make it robust and developer-friendly.
-
-1. The New Directory Structure
-Instead of two giant files, your project should look like this. This makes it easy to find what you need to fix or upgrade.
-
-Plaintext
-
-/var/www/quiz-app/
+## Project Structure
+```
+quizzera/
+├── public/                    # Web root
+│   ├── index-modular.php      # Player interface
+│   ├── admin-modular.php      # Admin interface  
+│   ├── assignment-modular.php # Self-paced quiz interface
+│   ├── template_manager.php   # Question builder tool
+│   ├── api.php                # Central API controller
+│   └── assets/
+│       ├── css/               # Modular CSS
+│       └── js/                # ES6 Modules
+├── src/
+│   ├── Database.php           # SQLite with WAL mode
+│   └── QuizManager.php        # All game logic
 ├── data/
-│   └── quiz.db            <-- (Replaces your .json files)
-├── public/                <-- (Only this folder is exposed to the web)
-│   ├── index.php          <-- Student Interface (View)
-│   ├── admin.php          <-- Admin Interface (View)
-│   ├── api.php            <-- Handles all AJAX requests (Controller)
-│   └── assets/            <-- CSS, JS, Images
-├── src/                   <-- (Your backend logic)
-│   ├── Database.php       <-- Handles SQLite connection
-│   └── QuizManager.php    <-- Game logic (buzzers, scoring, states)
-└── config.php             <-- Settings
-2. The Foundation: src/Database.php
-This file solves your "Reliability" problem. It wraps SQLite connection and turns on "WAL Mode" (Write-Ahead Logging), which allows reading and writing simultaneously without crashing—perfect for buzzing students.
+│   └── quiz.db                # SQLite database
+├── test-modular.sh            # Test suite (98 tests)
+├── CLAUDE.md                  # This file
+├── ROADMAP.md                 # Future plans
+└── legacy_dont_edit/          # Old code - DO NOT MODIFY
+```
 
-PHP
+---
 
-<?php
-class Database {
-    private $pdo;
+## Warnings
 
-    public function __construct() {
-        $dbPath = __DIR__ . '/../data/quiz.db';
-        // Connect to SQLite
-        $this->pdo = new PDO('sqlite:' . $dbPath);
-        $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        $this->pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-        
-        // CRITICAL: Enable WAL mode for high concurrency (prevents locking issues)
-        $this->pdo->exec('PRAGMA journal_mode = WAL;');
-        $this->pdo->exec('PRAGMA synchronous = NORMAL;');
-        
-        $this->initTables();
-    }
-
-    private function initTables() {
-        // Create tables if they don't exist (replaces your JSON structures)
-        $this->pdo->exec("
-            CREATE TABLE IF NOT EXISTS players (
-                id TEXT PRIMARY KEY,
-                nickname TEXT,
-                joined_at DATETIME
-            );
-            CREATE TABLE IF NOT EXISTS game_state (
-                key TEXT PRIMARY KEY,
-                value TEXT
-            );
-            CREATE TABLE IF NOT EXISTS buzzers (
-                player_id TEXT,
-                question_index INTEGER,
-                timestamp REAL
-            );
-        ");
-    }
-
-    public function query($sql, $params = []) {
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute($params);
-        return $stmt;
-    }
-}
-3. The Logic: src/QuizManager.php
-This solves your "Development" problem. Instead of spaghetti code checking file locks, you have clean methods. If you want to change how scoring works later, you only edit this file.
-
-PHP
-
-<?php
-class QuizManager {
-    private $db;
-
-    public function __construct(Database $db) {
-        $this->db = $db;
-    }
-
-    public function joinGame($nickname) {
-        $id = uniqid();
-        $this->db->query("INSERT INTO players (id, nickname, joined_at) VALUES (?, ?, datetime('now'))", 
-            [$id, $nickname]);
-        return $id;
-    }
-
-    public function recordBuzzer($playerId, $questionIndex) {
-        // Atomic insertion - impossible to have race conditions like the file lock
-        try {
-            $this->db->query("INSERT INTO buzzers (player_id, question_index, timestamp) VALUES (?, ?, ?)", 
-                [$playerId, $questionIndex, microtime(true)]);
-            return true;
-        } catch (Exception $e) {
-            return false;
-        }
-    }
-
-    public function getGameState() {
-        // Fetch current question, buzzers, etc. via SQL
-        // Return structured array
-    }
-}
-4. The Controller: public/api.php
-This becomes very clean. It simply receives the request and tells the Manager what to do.
-
-PHP
-
-<?php
-require_once __DIR__ . '/../src/Database.php';
-require_once __DIR__ . '/../src/QuizManager.php';
-
-header('Content-Type: application/json');
-$input = json_decode(file_get_contents('php://input'), true);
-
-$db = new Database();
-$game = new QuizManager($db);
-
-switch ($input['action']) {
-    case 'joinGame':
-        echo json_encode(['success' => true, 'id' => $game->joinGame($input['nickname'])]);
-        break;
-        
-    case 'buzz':
-        $success = $game->recordBuzzer($input['playerId'], $input['currentQuestion']);
-        echo json_encode(['success' => $success]);
-        break;
-}
-Why this is better for you
-Zero "File Lock" Crashes: SQLite handles the "Spin Lock" problem natively. If two students buzz at the exact same microsecond, SQLite queues them correctly without you writing a single line of code.
-
-Easy to Extend: Want to add a "Team Mode"? You just add a team_id column to the players table and update QuizManager. You don't have to rewrite a massive JSON parser.
-
-Data Persistence: If the server restarts, your SQLite file (quiz.db) is safe. JSON files often get corrupted if the server crashes while writing to them.
+1. **No npm/composer** - Zero external dependencies
+2. **Don't modify** `legacy_dont_edit/` directory
+3. **Don't use** `migrate.php` - migration completed
+4. **`data/` must be writable** by PHP for SQLite
+5. **`index.php` and `admin.php`** are legacy duplicates - use `-modular` versions

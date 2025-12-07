@@ -27,6 +27,7 @@
     <link rel="stylesheet" href="assets/css/admin/question-editor.css">
     <link rel="stylesheet" href="assets/css/admin/notes-editor.css">
     <link rel="stylesheet" href="assets/css/admin/results.css">
+    <link rel="stylesheet" href="assets/css/admin/assignments.css">
     
     <!-- External Dependencies -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -67,6 +68,7 @@
             <div class="tabs">
                 <div class="tab active" data-tab="control">Game Control</div>
                 <div class="tab" data-tab="questions">Manage Questions</div>
+                <div class="tab" data-tab="assignments">Assignments</div>
                 <div class="tab" data-tab="results">Results</div>
             </div>
 
@@ -123,6 +125,27 @@ Note:
 - "image" = optional image URL
 - "explanation" = teaching notes for admin</pre>
                     </div>
+                </div>
+            </div>
+
+            <!-- Assignments Tab -->
+            <div id="assignmentsTab" class="content hidden">
+                <div class="assignments-header">
+                    <h3><i class="fas fa-clipboard-list"></i> Assignments</h3>
+                    <div class="header-actions">
+                        <button id="refreshAssignmentsBtn" class="btn btn-secondary btn-sm">
+                            <i class="fas fa-sync"></i> Refresh
+                        </button>
+                        <button id="createAssignmentBtn" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Create Assignment
+                        </button>
+                    </div>
+                </div>
+                <div class="assignments-info">
+                    <p><i class="fas fa-info-circle"></i> Assignments allow students to complete quizzes at their own pace. Share the URL with students - they can join using a nickname (and optional password).</p>
+                </div>
+                <div id="assignmentsList" class="assignments-list">
+                    <!-- Assignments populated by JavaScript -->
                 </div>
             </div>
 
@@ -228,6 +251,54 @@ Note:
                 <button id="saveNotes" class="btn btn-primary">
                     <i class="fas fa-save"></i> Save Notes
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Assignment Modal -->
+    <div id="assignmentModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-clipboard-list"></i> Create Assignment</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <form id="assignmentForm">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="form-label">Assignment Title *</label>
+                        <input type="text" id="assignmentTitle" class="form-input" placeholder="e.g., Cybersecurity Quiz - Week 3" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Password (optional)</label>
+                        <input type="text" id="assignmentPassword" class="form-input" placeholder="Leave empty for no password">
+                        <p class="form-hint">If set, students will need this password to access the assignment</p>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Expires At (optional)</label>
+                        <input type="datetime-local" id="assignmentExpires" class="form-input">
+                        <p class="form-hint">Assignment will be inaccessible after this date</p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" id="cancelAssignment" class="btn btn-secondary">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Assignment</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Assignment Detail Modal -->
+    <div id="assignmentDetailModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Assignment Details</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <!-- Content populated by JavaScript -->
+            </div>
+            <div class="modal-footer">
+                <button id="assignmentDetailDone" class="btn btn-primary">Done</button>
             </div>
         </div>
     </div>

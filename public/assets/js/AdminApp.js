@@ -22,6 +22,7 @@ import { QuestionEditor } from './admin/QuestionEditor.js';
 import { SessionManager } from './admin/SessionManager.js';
 import { NotesEditor } from './admin/NotesEditor.js';
 import { TabsNavigation } from './admin/TabsNavigation.js';
+import { AssignmentManager } from './admin/AssignmentManager.js';
 
 class AdminApp {
     constructor() {
@@ -105,6 +106,13 @@ class AdminApp {
                 messages: this.messages,
                 toggleBtnId: 'notesBtn',
                 markdownRenderer: new MarkdownRenderer()
+            });
+
+            // Initialize assignment manager
+            this.modules.assignmentManager = new AssignmentManager({
+                api: this.api,
+                messages: this.messages,
+                feedback: this.feedback
             });
 
             // Call init() on all modules
@@ -574,6 +582,9 @@ class AdminApp {
     onTabChange(tabId) {
         if (tabId === 'results') {
             this.updateResultsView(this.state.state);
+        }
+        if (tabId === 'assignments') {
+            this.modules.assignmentManager.loadAssignments();
         }
     }
 
